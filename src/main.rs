@@ -4,6 +4,8 @@ use actix_web::{middleware, web, App, HttpServer};
 
 /// All top level module declarations should go in main.rs.
 /// This allows you to then `use crate::module_controllers` in other files.
+#[path = "./controllers/controllers.rs"]
+mod controllers;
 #[path = "./controllers/module_controllers.rs"]
 mod module_controllers;
 #[path = "./controllers/page_controllers.rs"]

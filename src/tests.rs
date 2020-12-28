@@ -3,13 +3,18 @@ use actix_web::{http::StatusCode, test};
 use module_models::MutModule;
 use page_models::MutPage;
 
+use controllers::{Controller, Req};
+
+use module_controllers::ModuleController;
+use page_controllers::PageController;
+
 // Creates a page used for unit tests.
 async fn create_test_page() {
     let new_page = MutPage {
         page_id: Some(-1),
         title: String::from("Hello world!"),
     };
-    page_controllers::create_page(serde_json::to_string(&new_page).unwrap())
+    PageController::create(serde_json::to_string(&new_page).unwrap())
         .await
         .unwrap();
 }
@@ -22,7 +27,7 @@ async fn create_test_module() {
         page_id: -1,
         content: Some(String::from("Hello world!")),
     };
-    module_controllers::create_module(serde_json::to_string(&new_module).unwrap())
+    ModuleController::create(serde_json::to_string(&new_module).unwrap())
         .await
         .unwrap();
 }
@@ -30,13 +35,13 @@ async fn create_test_module() {
 /// Deletes both pages and modules with the test IDs.
 /// This function does nto have to be efficient, as it is only for tests.
 async fn cleanup_test_values() {
-    let cleanup_req = test::TestRequest::get().param("id", "-1").to_http_request();
-    page_controllers::delete_page(cleanup_req.clone())
+    let req = Req { id: -1 };
+    let cleanup_req: actix_web::web::Path<Req> = actix_web::web::Path(req);
+    // Had to do a weird recasting because cloning Path clones the inside object instead of the entire `Path` struct.
+    PageController::delete(actix_web::web::Path(cleanup_req.clone()))
         .await
         .unwrap();
-    module_controllers::delete_module(cleanup_req)
-        .await
-        .unwrap();
+    ModuleController::delete(cleanup_req).await.unwrap();
 }
 
 #[actix_rt::test]
@@ -46,7 +51,7 @@ async fn create_page() {
         title: String::from("Hello world!"),
     };
 
-    let resp = page_controllers::create_page(serde_json::to_string(&new_page).unwrap())
+    let resp = PageController::create(serde_json::to_string(&new_page).unwrap())
         .await
         .unwrap();
 
@@ -61,7 +66,7 @@ async fn read_all_pages() {
     create_test_page().await;
     println!("after");
 
-    let resp = page_controllers::get_pages().await.unwrap();
+    let resp = PageController::read_all().await.unwrap();
 
     cleanup_test_values().await;
 
@@ -72,8 +77,8 @@ async fn read_all_pages() {
 async fn read_one_page() {
     create_test_page().await;
 
-    let req = test::TestRequest::get().param("id", "-1").to_http_request();
-    let resp = page_controllers::get_page(req).await.unwrap();
+    let req: actix_web::web::Path<Req> = actix_web::web::Path(Req { id: -1 });
+    let resp = PageController::read_one(req).await.unwrap();
 
     cleanup_test_values().await;
 
@@ -102,8 +107,8 @@ async fn update_page() {
         title: String::from("Hello world! updated"),
     };
 
-    let req = test::TestRequest::get().param("id", "-1").to_http_request();
-    let resp = page_controllers::update_page(serde_json::to_string(&new_page).unwrap(), req)
+    let req: actix_web::web::Path<Req> = actix_web::web::Path(Req { id: -1 });
+    let resp = PageController::update(serde_json::to_string(&new_page).unwrap(), req)
         .await
         .unwrap();
 
@@ -122,7 +127,7 @@ async fn create_modules() {
         page_id: -1,
         content: Some(String::from("Hello world!")),
     };
-    let resp = module_controllers::create_module(serde_json::to_string(&new_module).unwrap())
+    let resp = ModuleController::create(serde_json::to_string(&new_module).unwrap())
         .await
         .unwrap();
 
@@ -136,7 +141,7 @@ async fn read_all_modules() {
     create_test_page().await;
     create_test_module().await;
 
-    let resp = module_controllers::get_modules().await.unwrap();
+    let resp = ModuleController::read_all().await.unwrap();
 
     cleanup_test_values().await;
 
@@ -148,8 +153,8 @@ async fn read_one_module() {
     create_test_page().await;
     create_test_module().await;
 
-    let req = test::TestRequest::get().param("id", "-1").to_http_request();
-    let resp = module_controllers::get_module(req).await.unwrap();
+    let req: actix_web::web::Path<Req> = actix_web::web::Path(Req { id: -1 });
+    let resp = ModuleController::read_one(req).await.unwrap();
 
     cleanup_test_values().await;
 
@@ -168,10 +173,13 @@ async fn update_modules() {
         content: Some(String::from("Hello world! updated")),
     };
 
-    let req = test::TestRequest::get().param("id", "-1").to_http_request();
-    let resp = module_controllers::update_module(serde_json::to_string(&new_module).unwrap(), req)
-        .await
-        .unwrap();
+    let req: actix_web::web::Path<Req> = actix_web::web::Path(Req { id: -1 });
+    let resp = module_controllers::ModuleController::update(
+        serde_json::to_string(&new_module).unwrap(),
+        req,
+    )
+    .await
+    .unwrap();
 
     cleanup_test_values().await;
 
